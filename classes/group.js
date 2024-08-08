@@ -119,7 +119,7 @@ export class Group{
         const {data,error} = await supabase
             .from('group')
             .update([
-                { group_name: jsonBodyRequest.groupName, description: jsonBodyRequest.groupDescription, currency: jsonBodyRequest.groupCurrency }
+                { group_name: jsonBodyRequest.groupName, description: jsonBodyRequest.groupDescription, currency: jsonBodyRequest.np }
             ])
             .eq('group_id', this.groupID);
         if (error){
@@ -130,5 +130,70 @@ export class Group{
             return true;
         }
 
+    }
+
+    // Get balance info based on group id
+    async getBalanceBasedOnGroup(){
+        const { data, error } = await supabase
+            .from('balance')
+            .select('debtor_id, creditor_id, amount')
+            .eq('group_id', this.groupID);
+        if (error) {
+            console.error(error);
+            return [];
+        }
+        return data;
+    }
+
+    // Get previous messages of the group
+    async getPreviousMessagesBasedOnGroup(){
+        const {data, error} = await supabase
+            .from('group_chat')
+            .select()
+            .eq('group_id',this.groupID)
+            .order('time_stamp', {ascending: true});
+        if(!error){
+            return data;
+        }
+        else {
+            return null;
+        }
+    }
+
+    // Creates row in group_chat
+    async postMessageInGroup(jsonBodyRequest){
+        var inputUserID = jsonBodyRequest.inputUserID;
+        var inputMessage = jsonBodyRequest.inputMessage;
+
+        const { error } = await supabase
+            .from('group_chat')
+            .insert({ user_id: inputUserID,group_id:this.groupID,message:inputMessage})
+        return !error;
+    }
+
+    // Creates rows in user_group
+    async postUserGroup(jsonBodyRequest){
+        const { error } = await supabase
+            .from('user_group')
+            .insert([
+                { user_id: jsonBodyRequest.userID, group_id: this.groupID }
+            ])
+        return !error;
+    }
+
+    // Checks if user is already in group
+    async checkUserNotInGroup(jsonBodyRequest){
+        var inputUserID = jsonBodyRequest.userID;
+        const {count,error} = await supabase
+            .from('user_group')
+            .select('*',{count:'exact',head: true})
+            .eq('group_id',this.groupID)
+            .eq('user_id',inputUserID);
+        if (!error){
+            return count === 0;
+        }
+        else {
+            return false
+        }
     }
 }
